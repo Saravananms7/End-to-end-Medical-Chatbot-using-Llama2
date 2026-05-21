@@ -1,0 +1,9 @@
+ctransformers==0.2.5
+sentence-transformers>=2.7.0,<3.0
+huggingface-hub>=0.20.0,<1.0
+pinecone>=5.0.0
+langchain==0.0.225
+flask
+pypdf
+python-dotenv
+-e .

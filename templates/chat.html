@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="MedBot AI — Your intelligent medical assistant powered by Llama 2. Ask health questions and get accurate, evidence-based answers." />
+  <title>MedBot AI — Medical Chatbot</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="chat-card" role="main" aria-label="MedBot AI Chat Interface">
+
+    <!-- ── Header ── -->
+    <header class="chat-header">
+      <div class="header-avatar-wrap">
+        <img
+          src="{{ url_for('static', filename='bot_avatar.png') }}"
+          alt="MedBot AI Avatar"
+          class="header-avatar"
+          id="bot-avatar"
+          onerror="this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 64 64\'><circle cx=\'32\' cy=\'32\' r=\'32\' fill=\'%230d1627\'/><text y=\'42\' x=\'32\' text-anchor=\'middle\' font-size=\'28\'>🩺</text></svg>'"
+        />
+        <span class="status-dot" title="Online"></span>
+      </div>
+
+      <div class="header-info">
+        <div class="header-name">MedBot AI</div>
+        <div class="header-status" id="header-status-text">Online &amp; Ready</div>
+      </div>
+
+      <div class="header-badge" aria-label="Powered by Llama 2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+        Llama 2
+      </div>
+
+      <button class="header-menu-btn" id="clear-chat-btn" title="Clear conversation" aria-label="Clear conversation">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+          <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- ── Quick Suggestion Chips ── -->
+    <nav class="quick-wrap" aria-label="Quick question suggestions" id="quick-chips">
+      <button class="quick-chip" data-question="What are the symptoms of diabetes?">🩸 Diabetes symptoms</button>
+      <button class="quick-chip" data-question="How can I lower my blood pressure naturally?">❤️ Lower blood pressure</button>
+      <button class="quick-chip" data-question="What causes migraine headaches?">🧠 Migraine causes</button>
+      <button class="quick-chip" data-question="What are common signs of anxiety disorder?">😟 Anxiety signs</button>
+      <button class="quick-chip" data-question="How do I boost my immune system?">🛡️ Immune boost</button>
+      <button class="quick-chip" data-question="What is the recommended daily water intake?">💧 Hydration tips</button>
+    </nav>
+
+    <!-- ── Message Area ── -->
+    <section class="msg-body" id="msg-body" aria-live="polite" aria-label="Chat messages">
+
+      <!-- Welcome Banner (shown initially) -->
+      <div class="welcome-banner" id="welcome-banner">
+        <span class="welcome-icon">🩺</span>
+        <h2>Hello, I'm MedBot AI</h2>
+        <p>Your intelligent medical assistant. Ask me anything about symptoms, conditions, medications, or general health advice.</p>
+      </div>
+
+    </section>
+
+    <!-- ── Disclaimer ── -->
+    <div class="disclaimer" role="note" aria-label="Medical disclaimer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      For informational purposes only — not a substitute for professional medical advice.
+    </div>
+
+    <!-- ── Footer / Input ── -->
+    <footer class="chat-footer">
+      <form id="chat-form" autocomplete="off" aria-label="Message input form">
+        <div class="input-row">
+          <textarea
+            id="msg-input"
+            class="msg-input"
+            name="msg"
+            placeholder="Ask me about symptoms, conditions, medications…"
+            rows="1"
+            maxlength="1000"
+            required
+            aria-label="Type your medical question"
+          ></textarea>
+
+          <button type="submit" class="send-btn" id="send-btn" aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </form>
+      <p class="footer-hint">MedBot AI can make mistakes. Verify important health information with a doctor.</p>
+    </footer>
+
+  </div><!-- /chat-card -->
+</div><!-- /app-shell -->
+
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── DOM refs ── */
+  const form        = document.getElementById('chat-form');
+  const input       = document.getElementById('msg-input');
+  const sendBtn     = document.getElementById('send-btn');
+  const msgBody     = document.getElementById('msg-body');
+  const statusText  = document.getElementById('header-status-text');
+  const clearBtn    = document.getElementById('clear-chat-btn');
+  const welcome     = document.getElementById('welcome-banner');
+  const chips       = document.querySelectorAll('.quick-chip');
+
+  /* ── Bot avatar src (for message bubbles) ── */
+  const BOT_AVATAR  = "{{ url_for('static', filename='bot_avatar.png') }}";
+  const USER_AVATAR = 'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">' +
+    '<circle cx="20" cy="20" r="20" fill="#0062ff"/>' +
+    '<text y="26" x="20" text-anchor="middle" fill="white" font-size="16" font-family="Inter,sans-serif">U</text>' +
+    '</svg>'
+  );
+
+  /* ── Helpers ── */
+  function formatTime() {
+    const d = new Date();
+    return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+  }
+
+  function scrollToBottom(instant) {
+    msgBody.scrollTo({ top: msgBody.scrollHeight, behavior: instant ? 'instant' : 'smooth' });
+  }
+
+  function hideWelcome() {
+    if (welcome) welcome.style.display = 'none';
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  /* Auto-grow textarea */
+  input.addEventListener('input', function () {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+  });
+
+  /* Send on Enter (Shift+Enter for newline) */
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!sendBtn.disabled) form.dispatchEvent(new Event('submit', { cancelable: true }));
+    }
+  });
+
+  /* ── Append a user message bubble ── */
+  function appendUserMessage(text, time) {
+    hideWelcome();
+    const row = document.createElement('div');
+    row.className = 'msg-row user';
+    row.innerHTML = `
+      <div class="msg-content">
+        <div class="msg-bubble">${escapeHtml(text)}</div>
+        <div class="msg-meta">${time}</div>
+      </div>
+      <img src="${USER_AVATAR}" class="msg-avatar" alt="You" />
+    `;
+    msgBody.appendChild(row);
+    scrollToBottom();
+    return row;
+  }
+
+  /* ── Append a typing indicator ── */
+  function appendTyping() {
+    const row = document.createElement('div');
+    row.className = 'msg-row bot';
+    row.id = 'typing-' + Date.now();
+    row.innerHTML = `
+      <img src="${BOT_AVATAR}" class="msg-avatar" alt="MedBot"
+           onerror="this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 40 40\'><circle cx=\'20\' cy=\'20\' r=\'20\' fill=\'%230d1627\'/><text y=\'26\' x=\'20\' text-anchor=\'middle\' font-size=\'14\'>🩺</text></svg>'" />
+      <div class="msg-content">
+        <div class="msg-bubble">
+          <div class="typing-indicator" aria-label="MedBot is thinking">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+          </div>
+        </div>
+      </div>
+    `;
+    msgBody.appendChild(row);
+    scrollToBottom();
+    return row.id;
+  }
+
+  /* ── Replace typing indicator with bot reply ── */
+  function replaceTypingWithReply(typingId, text, time) {
+    const row = document.getElementById(typingId);
+    if (row) row.remove();
+
+    const reply = document.createElement('div');
+    reply.className = 'msg-row bot';
+    reply.innerHTML = `
+      <img src="${BOT_AVATAR}" class="msg-avatar" alt="MedBot"
+           onerror="this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 40 40\'><circle cx=\'20\' cy=\'20\' r=\'20\' fill=\'%230d1627\'/><text y=\'26\' x=\'20\' text-anchor=\'middle\' font-size=\'14\'>🩺</text></svg>'" />
+      <div class="msg-content">
+        <div class="msg-bubble">${escapeHtml(text)}</div>
+        <div class="msg-meta">${time}</div>
+      </div>
+    `;
+    msgBody.appendChild(reply);
+    scrollToBottom();
+  }
+
+  /* ── Replace typing indicator with error ── */
+  function replaceTypingWithError(typingId, errText) {
+    const row = document.getElementById(typingId);
+    if (row) row.remove();
+
+    const errRow = document.createElement('div');
+    errRow.className = 'msg-row bot';
+    errRow.innerHTML = `
+      <img src="${BOT_AVATAR}" class="msg-avatar" alt="MedBot"
+           onerror="this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 40 40\'><circle cx=\'20\' cy=\'20\' r=\'20\' fill=\'%230d1627\'/><text y=\'26\' x=\'20\' text-anchor=\'middle\' font-size=\'14\'>🩺</text></svg>'" />
+      <div class="msg-content">
+        <div class="msg-bubble" style="border-color:rgba(255,80,80,0.3);background:rgba(255,80,80,0.08);color:#ff8080;">
+          ⚠️ ${escapeHtml(errText)}
+        </div>
+      </div>
+    `;
+    msgBody.appendChild(errRow);
+    scrollToBottom();
+  }
+
+  /* ── Set UI busy / idle state ── */
+  function setBusy(busy) {
+    sendBtn.disabled = busy;
+    input.disabled   = busy;
+    if (busy) {
+      statusText.textContent  = 'Thinking… (may take 1–3 min on CPU)';
+      statusText.style.color  = '#f5a623';
+    } else {
+      statusText.textContent  = 'Online & Ready';
+      statusText.style.color  = '#22e55e';
+    }
+  }
+
+  /* ── Submit handler ── */
+  function sendMessage(text) {
+    text = text.trim();
+    if (!text) return;
+
+    const time = formatTime();
+    appendUserMessage(text, time);
+    input.value = '';
+    input.style.height = 'auto';
+
+    const typingId = appendTyping();
+    setBusy(true);
+
+    fetch('/get', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    'msg=' + encodeURIComponent(text),
+      signal:  AbortSignal.timeout(600000)
+    })
+    .then(async (res) => {
+      const body = await res.text();
+      if (!res.ok) throw new Error(body || 'Server error ' + res.status);
+      replaceTypingWithReply(typingId, body, formatTime());
+    })
+    .catch((err) => {
+      replaceTypingWithError(typingId, err.message || 'Something went wrong. Please try again.');
+    })
+    .finally(() => {
+      setBusy(false);
+      input.focus();
+    });
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    sendMessage(input.value);
+  });
+
+  /* ── Quick chips ── */
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      if (!sendBtn.disabled) sendMessage(this.dataset.question);
+    });
+  });
+
+  /* ── Clear conversation ── */
+  clearBtn.addEventListener('click', function () {
+    msgBody.innerHTML = '';
+    msgBody.appendChild(welcome);
+    welcome.style.display = '';
+  });
+
+  /* ── Focus input on load ── */
+  input.focus();
+
+})();
+</script>
+
+</body>
+</html>
